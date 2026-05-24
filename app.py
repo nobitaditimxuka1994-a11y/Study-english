@@ -8,11 +8,11 @@ st.set_page_config(page_title="Học Tiếng Anh", page_icon="🇬🇧", layout=
 mobile_style = """
     <style>
     /* Ẩn các thành phần thừa để tăng không gian hiển thị trên màn hình nhỏ */
-    减轻 không gian hiển thị {display: none;}
-    .stAppDeployButton {display: none;}
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
+    减轻 không gian hiển thị {display: ;}
+    .stAppDeployButton {display: ;}
+    #MainMenu {visibility: ;}
+    header {visibility: ;}
+    footer {visibility: ;}
     
     /* Phóng to font chữ toàn app cho dễ đọc trên điện thoại */
     html, body, [data-testid="stWidgetLabel"] p {
