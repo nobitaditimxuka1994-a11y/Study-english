@@ -1,116 +1,89 @@
 import streamlit as st
 import urllib.parse
 
-# --- CẤU HÌNH TRANG ---
-st.set_page_config(page_title="English Vocabulary In Use", layout="wide")
+# 1. Cấu hình trang tối giản (Chống giật lag cho mobile)
+st.set_page_config(page_title="Học từ vựng - In Use", layout="centered")
 
-# --- GIAO DIỆN CSS (Tối ưu cho điện thoại) ---
+# 2. CSS làm đẹp giao diện chuyên nghiệp
 st.markdown("""
     <style>
-    .main { background-color: #f0f2f6; }
-    .stSelectbox [data-testid="stMarkdownContainer"] { font-weight: bold; color: #1E1E1E; }
-    .stButton>button {
-        width: 100%; border-radius: 12px; height: 3.5em;
-        background-color: #2E7D32; color: white; font-weight: bold; border: none;
-    }
+    .stApp { background-color: #f8f9fa; }
+    .unit-title { color: #1e88e5; font-weight: bold; border-bottom: 2px solid #1e88e5; padding-bottom: 5px; }
     .word-card {
-        background: white; padding: 15px; border-radius: 15px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px;
-        border-left: 5px solid #2E7D32;
+        background: white; 
+        padding: 15px; 
+        border-radius: 12px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 12px;
+        border-left: 6px solid #1e88e5;
     }
+    .phonetic { color: #666; font-style: italic; font-size: 0.9em; }
+    .meaning { color: #2e7d32; font-weight: 500; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- DỮ LIỆU TỪ PDF (Đã chia nhỏ theo từng Unit) ---
-COURSE_DATA = {
-    "Unit 1: The Family (Gia đình)": [
-        {"en": "Parents", "ipa": "/ˈpeərənts/", "vi": "Bố mẹ"},
-        {"en": "Husband and wife", "ipa": "/ˈhʌzbənd ænd waɪf/", "vi": "Chồng và vợ"},
-        {"en": "Daughter and son", "ipa": "/ˈdɔːtə ænd sʌn/", "vi": "Con gái và con trai"},
+# 3. DỮ LIỆU TRÍCH XUẤT TỪ FILE PDF (Học liệu chính)
+# Tôi đã chia nhỏ để bạn không phải gọi file PDF nặng nề
+DATA = {
+    "Unit 1: The Family": [
         {"en": "Grandparents", "ipa": "/ˈɡrænpeərənts/", "vi": "Ông bà"},
-        {"en": "Aunt and uncle", "ipa": "/ɑːnt ænd ˈʌŋkl/", "vi": "Cô/dì và chú/bác"},
-        {"en": "Niece and nephew", "ipa": "/niːs ænd ˈnefjuː/", "vi": "Cháu gái và cháu trai"}
+        {"en": "Uncle", "ipa": "/ˈʌŋkl/", "vi": "Chú, bác trai"},
+        {"en": "Aunt", "ipa": "/ɑːnt/", "vi": "Cô, dì, bác gái"},
+        {"en": "Cousin", "ipa": "/ˈkʌzn/", "vi": "Anh chị em họ"},
+        {"en": "Niece", "ipa": "/niːs/", "vi": "Cháu gái"},
+        {"en": "Nephew", "ipa": "/ˈnefjuː/", "vi": "Cháu trai"}
     ],
-    "Unit 3: Parts of the body (Cơ thể)": [
+    "Unit 3: Parts of the body": [
         {"en": "Shoulder", "ipa": "/ˈʃəʊldə/", "vi": "Vai"},
+        {"en": "Stomach", "ipa": "/ˈstʌmək/", "vi": "Bụng/Dạ dày"},
         {"en": "Knee", "ipa": "/niː/", "vi": "Đầu gối"},
-        {"en": "Chest", "ipa": "/tʃest/", "vi": "Ngực"},
-        {"en": "Blood", "ipa": "/blʌd/", "vi": "Máu"},
-        {"en": "Heart", "ipa": "/hɑːt/", "vi": "Trái tim"},
-        {"en": "Brain", "ipa": "/breɪn/", "vi": "Não"}
+        {"en": "Thumb", "ipa": "/θʌm/", "vi": "Ngón tay cái"},
+        {"en": "Toes", "ipa": "/təʊz/", "vi": "Các ngón chân"}
     ],
-    "Unit 4: Appearance (Ngoại hình)": [
-        {"en": "Tall and slim", "ipa": "/tɔːl ænd slɪm/", "vi": "Cao và mảnh khảnh"},
+    "Unit 4: Appearance": [
+        {"en": "Fair hair", "ipa": "/feə heə/", "vi": "Tóc vàng nhạt"},
         {"en": "Overweight", "ipa": "/ˌəʊvəˈweɪt/", "vi": "Thừa cân"},
-        {"en": "Good-looking", "ipa": "/ˌɡʊd ˈlʊkɪŋ/", "vi": "Ưa nhìn/Đẹp trai"},
-        {"en": "Straight hair", "ipa": "/streɪt heə/", "vi": "Tóc thẳng"},
-        {"en": "Curly hair", "ipa": "/ˈkɜːli heə/", "vi": "Tóc xoăn"}
+        {"en": "Good-looking", "ipa": "/ˌɡʊd ˈlʊkɪŋ/", "vi": "Ưa nhìn"},
+        {"en": "Slim", "ipa": "/slɪm/", "vi": "Mảnh khảnh"}
     ]
 }
 
-# --- MENU CHÍNH ---
-choice = st.selectbox("🎯 CHỌN CHẾ ĐỘ HỌC", ["📚 Bài học từ PDF", "🔊 Luyện Phát Âm TTS", "📝 Kiểm tra"])
+def main():
+    st.title("📚 Vocabulary In Use")
+    
+    # Menu chọn bài học
+    unit_list = list(DATA.keys())
+    selected_unit = st.selectbox("📖 Chọn bài học hôm nay:", unit_list)
 
-# --- PHẦN 1: BÀI HỌC TỪ PDF ---
-if choice == "📚 Bài học từ PDF":
-    unit_choice = st.selectbox("Chọn bài học:", list(COURSE_DATA.keys()))
-    
-    st.markdown(f"### 📖 {unit_choice}")
-    
-    for item in COURSE_DATA[unit_choice]:
+    st.markdown(f"<h2 class='unit-title'>{selected_unit}</h2>", unsafe_allow_html=True)
+
+    # Hiển thị danh sách từ vựng dưới dạng Card
+    for item in DATA[selected_unit]:
         with st.container():
             st.markdown(f"""
             <div class="word-card">
-                <span style="font-size: 1.2em; font-weight: bold; color: #2E7D32;">{item['en']}</span><br>
-                <span style="color: #666;">{item['ipa']}</span><br>
-                <span style="font-size: 1.1em;">{item['vi']}</span>
+                <div style="font-size: 1.2em; font-weight: bold;">{item['en']}</div>
+                <div class="phonetic">{item['ipa']}</div>
+                <div class="meaning">{item['vi']}</div>
             </div>
             """, unsafe_allow_html=True)
             
-            # Nút bấm phát âm nhanh cho từng từ
-            if st.button(f"🔊 Nghe: {item['en']}", key=item['en']):
-                safe_text = urllib.parse.quote(item['en'])
-                tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q={safe_text}"
-                st.audio(tts_url, format="audio/mp3")
+            # Nút phát âm - Sử dụng URL trực tiếp từ Google TTS để tránh treo server
+            word_encoded = urllib.parse.quote(item['en'])
+            tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q={word_encoded}"
+            
+            # Trình phát nhạc gọn nhẹ cho mobile
+            st.audio(tts_url, format="audio/mp3")
+            st.write("---")
 
-# --- PHẦN 2: LUYỆN PHÁT ÂM ---
-elif choice == "🔊 Luyện Phát Âm TTS":
-    st.title("🔊 Luyện Nghe & Nói")
-    st.info("Nhập bất kỳ câu nào từ sách để luyện nghe chuẩn.")
-    
-    input_text = st.text_area("Nhập văn bản tiếng Anh:", height=100)
-    
-    if st.button("🚀 PHÁT ÂM"):
-        if input_text:
-            try:
-                safe_text = urllib.parse.quote(input_text)
-                tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q={safe_text}"
-                st.audio(tts_url, format="audio/mp3")
-                st.success("Đã tải xong âm thanh!")
-            except Exception:
-                st.error("Mạng 4G yếu, vui lòng thử lại.")
+    # Phần Luyện Nghe tự do
+    st.sidebar.title("🔊 Luyện phát âm")
+    text_input = st.sidebar.text_area("Nhập câu muốn nghe:", height=100)
+    if st.sidebar.button("Nghe ngay"):
+        if text_input:
+            q = urllib.parse.quote(text_input)
+            url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q={q}"
+            st.sidebar.audio(url)
 
-# --- PHẦN 3: KIỂM TRA (Dựa trên dữ liệu PDF) ---
-elif choice == "📝 Kiểm tra":
-    st.title("📝 Quiz theo bài học")
-    unit_quiz = st.selectbox("Chọn bài để kiểm tra:", list(COURSE_DATA.keys()))
-    
-    with st.form("quiz_form"):
-        score = 0
-        questions = COURSE_DATA[unit_quiz]
-        user_ans = []
-        
-        for i, q in enumerate(questions[:3]): # Lấy 3 câu hỏi ngẫu nhiên
-            st.write(f"Câu {i+1}: Nghĩa của từ **'{q['en']}'** là gì?")
-            ans = st.radio("Chọn đáp án:", [q['vi'], "Sai 1", "Sai 2"], key=f"quiz_{i}")
-            user_ans.append(ans)
-        
-        if st.form_submit_button("NỘP BÀI"):
-            for i, q in enumerate(questions[:3]):
-                if user_ans[i] == q['vi']:
-                    score += 1
-            st.metric("Điểm của bạn", f"{score}/3")
-            if score == 3: st.balloons()
-
-# --- FOOTER ---
-st.markdown("<br><hr><center><small>Dữ liệu: English Vocabulary in Use (Elementary)</small></center>", unsafe_allow_html=True)
+if __name__ == "__main__":
+    main()
