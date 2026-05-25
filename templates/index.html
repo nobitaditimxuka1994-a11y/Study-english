@@ -1,5 +1,109 @@
+
+
 <!DOCTYPE html>
 <html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>English Minh Khang</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; margin: 0; }
+        .card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .btn-blue { background: #1a73e8; }
+        .btn-orange { background: #f2994a; }
+        .result-text { margin-top: 12px; font-weight: bold; min-height: 20px; display: block; }
+    </style>
+</head>
+<body>
+    <select id="unitSelect" style="width:100%; padding:15px; border-radius:10px; margin-bottom:20px; font-size:16px;" onchange="loadWords()">
+        <option value="">-- Chọn bài học --</option>
+        {% for id, content in lessons.items() %}
+            <option value="{{id}}">{{content.title}}</option>
+        {% endfor %}
+    </select>
+
+    <div id="content"></div>
+
+    <script>
+        const data = {{ lessons|tojson }};
+        
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'en-US';
+            window.speechSynthesis.speak(msg);
+        }
+
+        // ĐÂY LÀ LỆNH ÉP MIC ĐÃ ĐƯỢC CHÈN ĐÚNG CHỖ
+        function startMic(target, resId) {
+            const display = document.getElementById(resId);
+            
+            // Xóa kết quả cũ của ô này
+            display.innerText = "";
+
+            // Bước 1: Ép hệ thống kiểm tra quyền truy cập Microphone
+            navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                // Bước 2: Nếu có quyền, bắt đầu nhận diện giọng nói
+                const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!Speech) { 
+                    alert("Trình duyệt này không hỗ trợ Mic. Hãy dùng Chrome!"); 
+                    return; 
+                }
+
+                const rec = new Speech();
+                rec.lang = 'en-US';
+                display.innerText = "🔴 Đang nghe...";
+                display.style.color = "orange";
+                rec.start();
+
+                rec.onresult = (e) => {
+                    const result = e.results[0][0].transcript.toLowerCase();
+                    if (result.includes(target.toLowerCase())) {
+                        display.innerText = "✅ Đúng: " + result;
+                        display.style.color = "green";
+                    } else {
+                        display.innerText = "❌ Sai: " + result;
+                        display.style.color = "red";
+                    }
+                };
+
+                rec.onerror = (e) => {
+                    display.innerText = "⚠️ Không nghe rõ, thử lại nhé!";
+                    display.style.color = "red";
+                };
+            })
+            .catch(function(err) {
+                alert("Bạn chưa cấp quyền Mic cho App này trong Cài đặt điện thoại!");
+            });
+        }
+
+        function loadWords() {
+            const unit = document.getElementById('unitSelect').value;
+            const container = document.getElementById('content');
+            container.innerHTML = '';
+            if (data[unit]) {
+                data[unit].words.forEach((w, i) => {
+                    const resId = 'res' + i; // Tạo ID riêng biệt cho mỗi ô
+                    container.innerHTML += `
+                        <div class="card">
+                            <h2 style="margin:0">${w.en}</h2>
+                            <p style="color:gray; margin:5px 0 15px 0">${w.vi}</p>
+                            <div class="btn-group">
+                                <button class="btn-blue" onclick="speak('${w.en}')">🔊 NGHE</button>
+                                <button class="btn-orange" onclick="startMic('${w.en}', '${resId}')">🎤 NÓI</button>
+                            </div>
+                            <div id="${resId}" class="result-text"></div>
+                        </div>`;
+                });
+            }
+        }
+    </script>
+</body>
+</html>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
