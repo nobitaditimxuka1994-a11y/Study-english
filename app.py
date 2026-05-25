@@ -1,144 +1,116 @@
 import streamlit as st
-import json
+import urllib.parse
 
-# 1. Cấu hình giao diện tối ưu cho di động (Centered giúp gom cụm nội dung)
-st.set_page_config(page_title="Học Tiếng Anh", page_icon="🇬🇧", layout="centered")
+# --- CẤU HÌNH TRANG ---
+st.set_page_config(page_title="English Vocabulary In Use", layout="wide")
 
-# CSS chuyên biệt cho di động: Phóng to nút bấm, căn giữa nội dung và ẩn menu thừa
-mobile_style = """
+# --- GIAO DIỆN CSS (Tối ưu cho điện thoại) ---
+st.markdown("""
     <style>
-    /* Ẩn các thành phần thừa để tăng không gian hiển thị trên màn hình nhỏ */
-    减轻 không gian hiển thị {display: ;}
-    .stAppDeployButton {display: ;}
-    #MainMenu {visibility: ;}
-    header {visibility: ;}
-    footer {visibility: ;}
-    
-    /* Phóng to font chữ toàn app cho dễ đọc trên điện thoại */
-    html, body, [data-testid="stWidgetLabel"] p {
-        font-size: 18px !important;
-    }
-    
-    /* Làm các nút bấm to hơn, dễ dùng ngón tay ấn (Touch-friendly) */
+    .main { background-color: #f0f2f6; }
+    .stSelectbox [data-testid="stMarkdownContainer"] { font-weight: bold; color: #1E1E1E; }
     .stButton>button {
-        width: 100% !important;
-        height: 55px !important;
-        font-size: 18px !important;
-        border-radius: 12px !important;
-        margin-bottom: 10px !important;
+        width: 100%; border-radius: 12px; height: 3.5em;
+        background-color: #2E7D32; color: white; font-weight: bold; border: none;
     }
-    
-    /* Định dạng khung Flashcard nổi bật */
-    .flashcard-box {
-        background-color: #f0f2f6;
-        padding: 25px;
-        border-radius: 15px;
-        text-align: center;
-        border: 2px solid #ddd;
-        margin-bottom: 20px;
+    .word-card {
+        background: white; padding: 15px; border-radius: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px;
+        border-left: 5px solid #2E7D32;
     }
     </style>
-    """
-st.markdown(mobile_style, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# 2. Dữ liệu bài học
-DATA_SAMPLE = {
-    "vocabulary": [
-        {"word": "Abandon", "type": "v", "meaning": "Từ bỏ, ruồng bỏ", "example": "He abandoned his career to become a singer."},
-        {"word": "Benevolent", "type": "adj", "meaning": "Nhân từ, rộng lượng", "example": "A benevolent old man donated all his money."},
-        {"word": "Compel", "type": "v", "meaning": "Bắt buộc, cưỡng bách", "example": "The law will compel employers to provide health insurance."}
+# --- DỮ LIỆU TỪ PDF (Đã chia nhỏ theo từng Unit) ---
+COURSE_DATA = {
+    "Unit 1: The Family (Gia đình)": [
+        {"en": "Parents", "ipa": "/ˈpeərənts/", "vi": "Bố mẹ"},
+        {"en": "Husband and wife", "ipa": "/ˈhʌzbənd ænd waɪf/", "vi": "Chồng và vợ"},
+        {"en": "Daughter and son", "ipa": "/ˈdɔːtə ænd sʌn/", "vi": "Con gái và con trai"},
+        {"en": "Grandparents", "ipa": "/ˈɡrænpeərənts/", "vi": "Ông bà"},
+        {"en": "Aunt and uncle", "ipa": "/ɑːnt ænd ˈʌŋkl/", "vi": "Cô/dì và chú/bác"},
+        {"en": "Niece and nephew", "ipa": "/niːs ænd ˈnefjuː/", "vi": "Cháu gái và cháu trai"}
     ],
-    "quiz": [
-        {
-            "question": "What is the meaning of 'Benevolent'?",
-            "options": ["Cruel", "Kind/Generous", "Angry", "Lazy"],
-            "answer": "Kind/Generous"
-        },
-        {
-            "question": "Complete: 'She was ______ to text him back because she was busy.'",
-            "options": ["reluctant", "eager", "happy", "excited"],
-            "answer": "reluctant"
-        }
+    "Unit 3: Parts of the body (Cơ thể)": [
+        {"en": "Shoulder", "ipa": "/ˈʃəʊldə/", "vi": "Vai"},
+        {"en": "Knee", "ipa": "/niː/", "vi": "Đầu gối"},
+        {"en": "Chest", "ipa": "/tʃest/", "vi": "Ngực"},
+        {"en": "Blood", "ipa": "/blʌd/", "vi": "Máu"},
+        {"en": "Heart", "ipa": "/hɑːt/", "vi": "Trái tim"},
+        {"en": "Brain", "ipa": "/breɪn/", "vi": "Não"}
+    ],
+    "Unit 4: Appearance (Ngoại hình)": [
+        {"en": "Tall and slim", "ipa": "/tɔːl ænd slɪm/", "vi": "Cao và mảnh khảnh"},
+        {"en": "Overweight", "ipa": "/ˌəʊvəˈweɪt/", "vi": "Thừa cân"},
+        {"en": "Good-looking", "ipa": "/ˌɡʊd ˈlʊkɪŋ/", "vi": "Ưa nhìn/Đẹp trai"},
+        {"en": "Straight hair", "ipa": "/streɪt heə/", "vi": "Tóc thẳng"},
+        {"en": "Curly hair", "ipa": "/ˈkɜːli heə/", "vi": "Tóc xoăn"}
     ]
 }
 
-# Khởi tạo trạng thái bộ nhớ cho app
-if 'current_flashcard' not in st.session_state:
-    st.session_state.current_flashcard = 0
-if 'show_meaning' not in st.session_state:
-    st.session_state.show_meaning = False
+# --- MENU CHÍNH ---
+choice = st.selectbox("🎯 CHỌN CHẾ ĐỘ HỌC", ["📚 Bài học từ PDF", "🔊 Luyện Phát Âm TTS", "📝 Kiểm tra"])
 
-st.title("🎯 English Mobile Hub")
-
-# Sử dụng Selectbox thay vì Tabs vì giao diện tab trên điện thoại rất dễ bị tràn và mất chữ
-choice = st.selectbox("Chọn phần học:", ["🗂️ Từ Vựng (Flashcard)", "📝 Trắc Nghiệm (Quiz)", "🔊 Luyện Nghe"])
-
-st.write("---")
-
-# --- PHẦN 1: FLASHCARD TỪ VỰNG ---
-if choice == "🗂️ Từ Vựng (Flashcard)":
-    vocab_list = DATA_SAMPLE["vocabulary"]
-    idx = st.session_state.current_flashcard
+# --- PHẦN 1: BÀI HỌC TỪ PDF ---
+if choice == "📚 Bài học từ PDF":
+    unit_choice = st.selectbox("Chọn bài học:", list(COURSE_DATA.keys()))
     
-    st.caption(f"Tiến độ: {idx + 1} / {len(vocab_list)}")
+    st.markdown(f"### 📖 {unit_choice}")
     
-    # Giao diện thẻ từ vựng bo góc, chữ to
-    if not st.session_state.show_meaning:
-        st.markdown(f'<div class="flashcard-box"><h2>🔤 {vocab_list[idx]["word"]}</h2><p>({vocab_list[idx]["type"]})</p><br><p>💡 <i>Chạm "Lật Thẻ" để xem nghĩa</i></p></div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="flashcard-box" style="background-color: #e8f5e9; border-color: #a5d6a7;"><h2>🔤 {vocab_list[idx]["word"]}</h2><p><b>Nghĩa:</b> {vocab_list[idx]["meaning"]}</p><p style="font-size: 15px; color: #555;"><b>Ví dụ:</b> {vocab_list[idx]["example"]}</p></div>', unsafe_allow_html=True)
-        
-    # Hệ thống nút bấm xếp dọc hoàn toàn để không bị thu nhỏ trên điện thoại
-    if st.button("🔄 LẬT THẺ"):
-        st.session_state.show_meaning = not st.session_state.show_meaning
-        st.rerun()
-        
-    if st.button("⏩ TỪ TIẾP THEO"):
-        st.session_state.current_flashcard = (idx + 1) % len(vocab_list)
-        st.session_state.show_meaning = False
-        st.rerun()
-        
-    if st.button("⏪ TỪ TRƯỚC ĐÓ"):
-        st.session_state.current_flashcard = (idx - 1) % len(vocab_list)
-        st.session_state.show_meaning = False
-        st.rerun()
-
-# --- PHẦN 2: TRẮC NGHIỆM ---
-elif choice == "📝 Trắc Nghiệm (Quiz)":
-    st.header("Bài Kiểm Tra Ngắn")
-    quizzes = DATA_SAMPLE["quiz"]
-    
-    score = 0
-    with st.form("quiz_form"):
-        user_answers = []
-        for i, q in enumerate(quizzes):
-            st.markdown(f"**Câu {i+1}: {q['question']}**")
-            # Thiết kế ô chọn đáp án thưa ra để ngón tay dễ bấm không bị nhầm
-            ans = st.radio(f"Chọn đáp án {i+1}", q["options"], key=f"q_{i}", label_visibility="collapsed")
-            user_answers.append(ans)
-            st.write("")
+    for item in COURSE_DATA[unit_choice]:
+        with st.container():
+            st.markdown(f"""
+            <div class="word-card">
+                <span style="font-size: 1.2em; font-weight: bold; color: #2E7D32;">{item['en']}</span><br>
+                <span style="color: #666;">{item['ipa']}</span><br>
+                <span style="font-size: 1.1em;">{item['vi']}</span>
+            </div>
+            """, unsafe_allow_html=True)
             
-        # Nộp bài bằng nút bấm lớn ở cuối
-        submit_quiz = st.form_submit_button("🔥 NỘP BÀI KIỂM TRA")
-        
-        if submit_quiz:
-            for i, q in enumerate(quizzes):
-                if user_answers[i] == q["answer"]:
-                    score += 1
-            if score == len(quizzes):
-                st.balloons()
-                st.success(f"🎉 Xuất sắc! Điểm của bạn: {score}/{len(quizzes)}")
-            else:
-                st.warning(f"📱 Bạn đúng: {score}/{len(quizzes)}. Thử lại nhé!")
+            # Nút bấm phát âm nhanh cho từng từ
+            if st.button(f"🔊 Nghe: {item['en']}", key=item['en']):
+                safe_text = urllib.parse.quote(item['en'])
+                tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q={safe_text}"
+                st.audio(tts_url, format="audio/mp3")
 
-# --- PHẦN 3: LUYỆN NGHE ---
-elif choice == "🔊 Luyện Nghe":
-    st.header("Luyện Phát Âm TTS")
-    st.write("Nhập câu tiếng Anh vào ô dưới để nghe máy đọc:")
+# --- PHẦN 2: LUYỆN PHÁT ÂM ---
+elif choice == "🔊 Luyện Phát Âm TTS":
+    st.title("🔊 Luyện Nghe & Nói")
+    st.info("Nhập bất kỳ câu nào từ sách để luyện nghe chuẩn.")
     
-    text_to_speak = st.text_area("Nhập văn bản tại đây:", "Hello! Welcome to your mobile English app.", height=100)
+    input_text = st.text_area("Nhập văn bản tiếng Anh:", height=100)
     
-    if st.button("🔊 PHÁT ÂM NGAY"):
-        tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q={text_to_speak.replace(' ', '+')}"
-        # Trình phát nhạc tự động co giãn vừa vặn chiều ngang điện thoại
-        st.audio(tts_url, format="audio/mp3")
+    if st.button("🚀 PHÁT ÂM"):
+        if input_text:
+            try:
+                safe_text = urllib.parse.quote(input_text)
+                tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q={safe_text}"
+                st.audio(tts_url, format="audio/mp3")
+                st.success("Đã tải xong âm thanh!")
+            except Exception:
+                st.error("Mạng 4G yếu, vui lòng thử lại.")
+
+# --- PHẦN 3: KIỂM TRA (Dựa trên dữ liệu PDF) ---
+elif choice == "📝 Kiểm tra":
+    st.title("📝 Quiz theo bài học")
+    unit_quiz = st.selectbox("Chọn bài để kiểm tra:", list(COURSE_DATA.keys()))
+    
+    with st.form("quiz_form"):
+        score = 0
+        questions = COURSE_DATA[unit_quiz]
+        user_ans = []
+        
+        for i, q in enumerate(questions[:3]): # Lấy 3 câu hỏi ngẫu nhiên
+            st.write(f"Câu {i+1}: Nghĩa của từ **'{q['en']}'** là gì?")
+            ans = st.radio("Chọn đáp án:", [q['vi'], "Sai 1", "Sai 2"], key=f"quiz_{i}")
+            user_ans.append(ans)
+        
+        if st.form_submit_button("NỘP BÀI"):
+            for i, q in enumerate(questions[:3]):
+                if user_ans[i] == q['vi']:
+                    score += 1
+            st.metric("Điểm của bạn", f"{score}/3")
+            if score == 3: st.balloons()
+
+# --- FOOTER ---
+st.markdown("<br><hr><center><small>Dữ liệu: English Vocabulary in Use (Elementary)</small></center>", unsafe_allow_html=True)
