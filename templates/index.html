@@ -3,159 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>English Vocabulary Pro</title>
+    <title>English Pro: Nghe & Nói</title>
     <style>
-        /* --- GIAO DIỆN CSS CHUYÊN NGHIỆP CHO MOBILE --- */
-        :root {
-            --primary-color: #2ecc71;
-            --bg-color: #f8f9fa;
-            --text-dark: #2c3e50;
-            --card-bg: #ffffff;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 15px;
-            color: var(--text-dark);
-        }
-
-        .header {
-            text-align: center;
-            padding: 20px 0;
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
-            color: white;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3);
-        }
-
-        .unit-selector {
-            width: 100%;
-            padding: 15px;
-            border-radius: 12px;
-            border: 2px solid var(--primary-color);
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 25px;
-            background: white;
-            outline: none;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 18px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            border-left: 6px solid var(--primary-color);
-            transition: transform 0.2s;
-        }
-
-        .word-en {
-            font-size: 1.5em;
-            font-weight: 800;
-            color: var(--text-dark);
-            margin-bottom: 5px;
-        }
-
-        .word-ipa {
-            color: #7f8c8d;
-            font-style: italic;
-            margin-bottom: 10px;
-            font-size: 0.95em;
-        }
-
-        .word-vi {
-            color: #27ae60;
-            font-size: 1.2em;
-            font-weight: 500;
-        }
-
-        .audio-btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            width: 100%;
-            margin-top: 15px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            cursor: pointer;
-        }
-
-        .audio-btn:active {
-            transform: scale(0.95);
-            background-color: #27ae60;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            font-size: 0.8em;
-            color: #bdc3c7;
-        }
+        :root { --primary: #2ecc71; --secondary: #3498db; --bg: #f4f7f6; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; text-align: center; }
+        .header { background: var(--primary); color: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; }
+        .unit-selector { width: 100%; padding: 12px; border-radius: 10px; margin-bottom: 20px; }
+        .card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .en { font-size: 1.5em; font-weight: bold; display: block; }
+        .vi { color: #27ae60; margin-bottom: 10px; display: block; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; }
+        .btn-listen { background: var(--secondary); }
+        .btn-speak { background: #e67e22; }
+        .status { margin-top: 10px; font-size: 0.9em; font-weight: bold; }
+        .correct { color: #2ecc71; }
+        .wrong { color: #e74c3c; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1 style="margin:0; font-size: 1.4em;">ENGLISH IN USE</h1>
-        <p style="margin:5px 0 0; opacity: 0.9; font-size: 0.9em;">Elementary Vocabulary</p>
-    </div>
+<div class="header">
+    <h2>Học & Luyện Nói</h2>
+</div>
 
-    <select class="unit-selector" id="unitSelect" onchange="loadLesson()">
-        <option value="">-- Chọn bài học từ PDF --</option>
-        {% for id, content in lessons.items() %}
-            <option value="{{id}}">{{content.title}}</option>
-        {% endfor %}
-    </select>
+<select class="unit-selector" id="unitSelect" onchange="loadLesson()">
+    <option value="">-- Chọn bài học --</option>
+    {% for id, content in lessons.items() %}
+        <option value="{{id}}">{{content.title}}</option>
+    {% endfor %}
+</select>
 
-    <div id="lessonContent"></div>
+<div id="lessonContent"></div>
 
-    <div class="footer">
-        © 2026 Mobile Learning App
-    </div>
+<script>
+    const lessonsData = {{ lessons|tojson }};
+    
+    // 1. CHỨC NĂNG NGHE (Text-to-Speech)
+    function playAudio(text) {
+        const msg = new SpeechSynthesisUtterance();
+        msg.text = text;
+        msg.lang = 'en-US';
+        msg.rate = 0.9; // Đọc hơi chậm để dễ nghe
+        window.speechSynthesis.speak(msg);
+    }
 
-    <script>
-        // Lấy dữ liệu từ Flask gửi sang dạng JSON
-        const lessonsData = {{ lessons|tojson }};
+    // 2. CHỨC NĂNG NÓI (Speech-to-Text)
+    function startListening(targetText, statusId) {
+        const statusDiv = document.getElementById(statusId);
         
-        function loadLesson() {
-            const selectedId = document.getElementById('unitSelect').value;
-            const container = document.getElementById('lessonContent');
-            container.innerHTML = ''; // Xóa bài cũ
-            
-            if(selectedId && lessonsData[selectedId]) {
-                const words = lessonsData[selectedId].words;
-                
-                words.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <div class="word-en">${item.en}</div>
-                        <div class="word-ipa">${item.ipa}</div>
-                        <div class="word-vi">${item.vi}</div>
-                        <button class="audio-btn" onclick="speak('${item.en.replace(/'/g, "\\'")}')">
-                            <span>🔊 PHÁT ÂM</span>
-                        </button>
-                    `;
-                    container.appendChild(card);
-                });
-            }
+        // Kiểm tra trình duyệt có hỗ trợ Mic không
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Trình duyệt của bạn không hỗ trợ Microphone.");
+            return;
         }
 
-        // Hàm phát âm sử dụng Google TTS trực tiếp trên trình duyệt (Rất nhẹ)
-        function speak(text) {
-            const url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=" + encodeURIComponent(text);
-            const audio = new Audio(url);
-            audio.play().catch(e => console.log("Lỗi phát âm:", e));
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        statusDiv.innerHTML = "Đang nghe... Hãy nói đi!";
+        statusDiv.style.color = "blue";
+
+        recognition.start();
+
+        recognition.onresult = function(event) {
+            const result = event.results[0][0].transcript.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"");
+            const target = targetText.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"");
+            
+            if (result === target) {
+                statusDiv.innerHTML = "Chính xác! Bạn nói: " + result;
+                statusDiv.className = "status correct";
+            } else {
+                statusDiv.innerHTML = "Chưa đúng. Bạn nói: " + result + " (Cần nói: " + target + ")";
+                statusDiv.className = "status wrong";
+            }
+        };
+
+        recognition.onerror = function() {
+            statusDiv.innerHTML = "Lỗi Mic hoặc bạn chưa nói gì.";
+            statusDiv.className = "status wrong";
+        };
+    }
+
+    function loadLesson() {
+        const selectedId = document.getElementById('unitSelect').value;
+        const container = document.getElementById('lessonContent');
+        container.innerHTML = '';
+        
+        if(selectedId && lessonsData[selectedId]) {
+            lessonsData[selectedId].words.forEach((item, index) => {
+                const id = 'status-' + index;
+                container.innerHTML += `
+                    <div class="card">
+                        <span class="en">${item.en}</span>
+                        <span class="vi">${item.vi}</span>
+                        <div class="btn-group">
+                            <button class="btn-listen" onclick="playAudio('${item.en}')">🔊 NGHE</button>
+                            <button class="btn-speak" onclick="startListening('${item.en}', '${id}')">🎤 LUYỆN NÓI</button>
+                        </div>
+                        <div id="${id}" class="status"></div>
+                    </div>
+                `;
+            });
         }
-    </script>
+    }
+</script>
 </body>
 </html>
