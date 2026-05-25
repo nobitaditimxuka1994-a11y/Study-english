@@ -2,109 +2,76 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>English Minh Khang</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Pro</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; margin: 0; padding: 15px; }
-        .unit-selector { width: 100%; padding: 15px; border-radius: 10px; border: 2px solid #3498db; margin-bottom: 20px; font-size: 16px; }
-        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-align: center; }
-        .word-en { font-size: 24px; font-weight: bold; color: #2980b9; margin-bottom: 5px; display: block; }
-        .word-ipa { color: #7f8c8d; font-style: italic; margin-bottom: 5px; display: block; }
-        .word-vi { color: #27ae60; font-size: 18px; margin-bottom: 15px; display: block; }
-        
-        .btn-container { display: flex; gap: 10px; }
-        .btn { flex: 1; border: none; padding: 15px; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
-        .btn-hear { background-color: #3498db; }
-        .btn-speak { background-color: #e67e22; }
-        
-        .result { margin-top: 10px; font-size: 14px; font-weight: bold; min-height: 20px; border-radius: 5px; padding: 5px; }
-        .status-listening { color: #d35400; animation: blink 1s infinite; }
-        .status-correct { color: #27ae60; background: #eafaf1; }
-        .status-wrong { color: #e74c3c; background: #fdedec; }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        body { font-family: sans-serif; padding: 15px; background: #f4f4f4; }
+        .card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-box { display: flex; gap: 10px; margin-top: 15px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
+        .btn-hear { background: #3498db; }
+        .btn-mic { background: #e67e22; }
+        #status { font-weight: bold; margin-top: 10px; display: block; min-height: 20px; }
     </style>
 </head>
 <body>
-
-    <h2 style="text-align:center;">📚 English Elementary</h2>
-
-    <select class="unit-selector" id="unitSelect" onchange="loadLesson()">
+    <select id="unitSelect" style="width:100%; padding:15px; margin-bottom:20px;" onchange="showWords()">
         <option value="">-- Chọn bài học --</option>
         {% for id, content in lessons.items() %}
             <option value="{{id}}">{{content.title}}</option>
         {% endfor %}
     </select>
 
-    <div id="lesson-content"></div>
+    <div id="main"></div>
 
     <script>
-        const lessonsData = {{ lessons|tojson }};
-
-        // 1. XỬ LÝ NGHE (Dùng giọng nói hệ thống - Cực ổn định)
-        function playSound(text) {
+        const data = {{ lessons|tojson }};
+        
+        function hear(txt) {
             window.speechSynthesis.cancel();
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'en-US';
-            msg.rate = 0.8;
-            window.speechSynthesis.speak(msg);
+            const speech = new SpeechSynthesisUtterance(txt);
+            speech.lang = 'en-US';
+            window.speechSynthesis.speak(speech);
         }
 
-        // 2. XỬ LÝ MIC (Luyện nói)
-        function startSpeak(target, resultId) {
-            const resDiv = document.getElementById(resultId);
-            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        function startMic(target, resId) {
+            const out = document.getElementById(resId);
+            const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if(!Rec) { alert("Thiết bị không hỗ trợ Mic"); return; }
 
-            if (!SpeechRec) {
-                alert("Trình duyệt/APK không hỗ trợ Mic. Hãy dùng Chrome!");
-                return;
-            }
+            const recognizer = new Rec();
+            recognizer.lang = 'en-US';
+            out.innerHTML = "🔴 Đang nghe...";
+            recognizer.start();
 
-            const recog = new SpeechRec();
-            recog.lang = 'en-US';
-            resDiv.innerHTML = "🔴 Đang nghe... Hãy đọc to!";
-            resDiv.className = "result status-listening";
-
-            recog.start();
-
-            recog.onresult = (e) => {
-                const voiceResult = e.results[0][0].transcript.toLowerCase().trim();
-                const cleanTarget = target.toLowerCase().replace(/[.,!?;]/g, "").trim();
-
-                if (voiceResult.includes(cleanTarget)) {
-                    resDiv.innerHTML = "✅ Đúng rồi! Bạn nói: " + voiceResult;
-                    resDiv.className = "result status-correct";
+            recognizer.onresult = (e) => {
+                const userSaid = e.results[0][0].transcript.toLowerCase();
+                if(userSaid.includes(target.toLowerCase())) {
+                    out.innerHTML = "✅ Đúng: " + userSaid;
+                    out.style.color = "green";
                 } else {
-                    resDiv.innerHTML = "❌ Chưa đúng. Bạn nói: " + voiceResult;
-                    resDiv.className = "result status-wrong";
+                    out.innerHTML = "❌ Sai: " + userSaid;
+                    out.style.color = "red";
                 }
             };
-
-            recog.onerror = () => {
-                resDiv.innerHTML = "⚠️ Lỗi: Không nhận được giọng nói.";
-                resDiv.className = "result status-wrong";
-            };
         }
 
-        function loadLesson() {
+        function showWords() {
             const id = document.getElementById('unitSelect').value;
-            const container = document.getElementById('lesson-content');
-            container.innerHTML = '';
-            
-            if(id && lessonsData[id]) {
-                lessonsData[id].words.forEach((w, index) => {
-                    const rId = 'res-' + index;
-                    container.innerHTML += `
+            const box = document.getElementById('main');
+            box.innerHTML = '';
+            if(data[id]) {
+                data[id].words.forEach((w, i) => {
+                    box.innerHTML += `
                         <div class="card">
-                            <span class="word-en">${w.en}</span>
-                            <span class="word-ipa">${w.ipa}</span>
-                            <span class="word-vi">${w.vi}</span>
-                            <div class="btn-container">
-                                <button class="btn btn-hear" onclick="playSound('${w.en}')">🔊 NGHE</button>
-                                <button class="btn btn-speak" onclick="startSpeak('${w.en}', '${rId}')">🎤 LUYỆN NÓI</button>
+                            <h2>${w.en}</h2>
+                            <p>${w.vi}</p>
+                            <div class="btn-box">
+                                <button class="btn-hear" onclick="hear('${w.en}')">🔊 NGHE</button>
+                                <button class="btn-mic" onclick="startMic('${w.en}', 'res${i}')">🎤 NÓI</button>
                             </div>
-                            <div id="${rId}" class="result"></div>
-                        </div>
-                    `;
+                            <div id="res${i}" style="margin-top:10px; font-weight:bold;"></div>
+                        </div>`;
                 });
             }
         }
