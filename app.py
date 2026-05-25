@@ -1,6 +1,6 @@
 from flask import Flask, render_template_string, jsonify
 import urllib.parse
-
+import os
 app = Flask(__name__)
 
 # DỮ LIỆU TỪ PDF (Có thể mở rộng lên hàng trăm Unit)
@@ -80,4 +80,13 @@ def lesson(unit_id):
     return render_template_string(HTML_TEMPLATE, lessons=data_lessons, current_lesson=current)
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+    
+
+
+# ... (các phần code khác của bạn)
+
+if __name__ == '__main__':
+    # Server cần dòng này để biết chạy ở cổng nào
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
 
